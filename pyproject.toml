@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "health-risk-assessment-chatbot"
+version = "0.1.0"
+description = "A symptom-based disease risk assessment chatbot that uses machine learning models trained on Kaggle datasets"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+numpy = "^1.24.0"
+openai = "^1.3.0"
+pandas = "^2.0.0"
+scikit-learn = "1.2.2"
+imbalanced-learn = "0.10.1"
+xgboost = "^2.0.0"
+kaggle = "^1.5.16"
+python-dotenv = "^1.0.0"
+baml-py = "^0.83.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+chatbot = "main:main" 
