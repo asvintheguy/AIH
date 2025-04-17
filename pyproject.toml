@@ -16,7 +16,7 @@ imbalanced-learn = "0.10.1"
 xgboost = "^2.0.0"
 kaggle = "^1.5.16"
 python-dotenv = "^1.0.0"
-baml-py = "^0.83.0"
+baml-py = "^0.84.3"
 
 [build-system]
 requires = ["poetry-core"]

@@ -50,14 +50,43 @@ The system is built using:
 ```bash
 # Create a .env file with:
 OPENAI_API_KEY=your_openai_key
-KAGGLE_USERNAME=your_kaggle_username
-KAGGLE_KEY=your_kaggle_api_key
+OPENAI_BASE_URL=the_base_url
+BAML_LOG=OFF
 ```
 
-2. Run the application:
+2. Set up Kaggle API credentials:
 
 ```bash
-poetry run python main.py
+# 1. Create a Kaggle account at https://www.kaggle.com if you don't have one
+# 2. Go to your Kaggle account settings (https://www.kaggle.com/account)
+# 3. Scroll down to API section and click "Create New API Token"
+# 4. This will download a kaggle.json file with your credentials
+# 5. Create a .kaggle directory in your home folder if it doesn't exist
+# 6. Place the kaggle.json file in this directory:
+
+# For Windows:
+mkdir %USERPROFILE%\.kaggle
+copy downloaded_kaggle.json %USERPROFILE%\.kaggle\kaggle.json
+
+# For Linux/Mac:
+mkdir -p ~/.kaggle
+cp downloaded_kaggle.json ~/.kaggle/kaggle.json
+chmod 600 ~/.kaggle/kaggle.json  # Set appropriate permissions
+```
+
+3. Run these commands to setup the project:
+
+```bash
+python -m venv .venv # This command will initialize the env
+./.venv/scripts/activate # This command will activate it
+pip install poetry # This command installs poetry
+poetry update # This command will update poetry
+poetry install # This command will install
+```
+
+4. Run the project
+```bash
+poetry run chatbot
 ```
 
 ## Project Structure
