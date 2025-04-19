@@ -7,20 +7,21 @@ import json
 import pandas as pd
 from typing import List, Dict, Any, Optional, Union
 
-from baml_client import b  # Import the generated BAML client
+from baml_client import b
 from baml_client.types import (
     DatasetInfo,
     ModelEvaluation,
     RiskAssessment,
     HealthRiskReport,
-    SearchQueries,
-    FeatureInfo,
     ConsolidatedFeatures
 )
 
-from src.api.kaggle_api import search_kaggle_datasets, download_kaggle_dataset
-from src.data.dataset import analyze_dataset, get_target_labels_mapping
-from src.models.model import get_best_model
+from src.kaggle_api import search_kaggle_datasets, download_kaggle_dataset
+from src.dataset import analyze_dataset, get_target_labels_mapping
+from src.model import get_best_model
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class HealthRiskSystem:
@@ -165,6 +166,7 @@ class HealthRiskSystem:
             
         print("📊 Training models on selected datasets...")
         all_evaluations = []
+        processed_datasets = 0
         
         for dataset_info in self.datasets:
             print(f"  Processing dataset: {dataset_info.title}")
@@ -193,7 +195,7 @@ class HealthRiskSystem:
                     feature_types[feat] = 'categorical'
                 
                 # Wrap the model for safer prediction
-                from src.models.model import ModelWrapper
+                from src.model import ModelWrapper
                 wrapped_model = ModelWrapper(best_model, feature_types)
                 
                 # Store the wrapped model
@@ -208,6 +210,22 @@ class HealthRiskSystem:
                         f1Score=0.75 + (0.07 * (models.index(model_name) / len(models))),
                         datasetTitle=dataset_info.title
                     ))
+                
+                processed_datasets += 1
+                    
+            except ValueError as e:
+                if "Dataset too large" in str(e):
+                    print(f"  ⚠️ Skipping dataset {dataset_info.title}: {e}")
+                else:
+                    print(f"  ⚠️ Error processing dataset {dataset_info.title}: {e}")
+                    
+                # Try using the BAML tool as fallback
+                try:
+                    evaluations = b.EvaluateModels(dataset_info)
+                    all_evaluations.extend(evaluations)
+                    processed_datasets += 1
+                except Exception as e2:
+                    print(f"  ❌ Fallback evaluation also failed: {e2}")
                     
             except Exception as e:
                 print(f"  ⚠️ Error processing dataset {dataset_info.title}: {e}")
@@ -215,6 +233,7 @@ class HealthRiskSystem:
                 try:
                     evaluations = b.EvaluateModels(dataset_info)
                     all_evaluations.extend(evaluations)
+                    processed_datasets += 1
                 except Exception as e2:
                     print(f"  ❌ Fallback evaluation also failed: {e2}")
         
@@ -223,7 +242,7 @@ class HealthRiskSystem:
             return False
             
         self.model_evaluations = all_evaluations
-        print(f"✅ Trained and evaluated {len(all_evaluations)} models.")
+        print(f"✅ Trained and evaluated {len(all_evaluations)} models on {processed_datasets} datasets.")
         return True
 
     def consolidate_dataset_features(self) -> bool:
@@ -283,8 +302,22 @@ class HealthRiskSystem:
             
             # Add additional info for categorical features
             if feature.dataType == "categorical" and feature.possibleValues:
-                options = ", ".join(feature.possibleValues)
-                print(f"   Options: {options}")
+                # Check if this is a binary yes/no question (values are 0/1 or similar)
+                is_binary = False
+                binary_values = [("0", "1"), ("no", "yes"), ("false", "true")]
+                
+                for neg, pos in binary_values:
+                    normalized_values = [str(v).lower().strip() for v in feature.possibleValues]
+                    if set(normalized_values) == {neg, pos} or set(normalized_values) == {pos, neg}:
+                        is_binary = True
+                        # Show as yes/no option to user
+                        print(f"   Options: yes/no")
+                        break
+                
+                # If not binary, show original options
+                if not is_binary:
+                    options = ", ".join(feature.possibleValues)
+                    print(f"   Options: {options}")
             
             # Get user input
             while True:
@@ -299,6 +332,27 @@ class HealthRiskSystem:
                     except ValueError:
                         print("   ⚠️ Please enter a numeric value.")
                 else:
+                    # Handle yes/no conversion for binary categorical features
+                    if feature.possibleValues:
+                        normalized_values = [str(v).lower().strip() for v in feature.possibleValues]
+                        
+                        # Check if this is a binary question with 0/1 values
+                        if set(normalized_values) == {"0", "1"} or set(normalized_values) == {"1", "0"}:
+                            # Convert yes/no to 0/1
+                            if value.lower() in ["yes", "y", "true", "t"]:
+                                collected_data[feature.name] = "1"
+                                break
+                            elif value.lower() in ["no", "n", "false", "f"]:
+                                collected_data[feature.name] = "0"
+                                break
+                            elif value in ["0", "1"]:
+                                collected_data[feature.name] = value
+                                break
+                            else:
+                                print("   ⚠️ Please enter 'yes' or 'no'.")
+                                continue
+                    
+                    # For other categorical features, just store as-is
                     collected_data[feature.name] = value
                     break
         

@@ -2,8 +2,15 @@
 Dataset handling and analysis functions.
 """
 
+import os
 import pandas as pd
-from src.api.kaggle_api import download_kaggle_dataset
+from src.kaggle_api import download_kaggle_dataset
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+MAX_DATASET_SIZE_MB = float(os.getenv("MAX_DATASET_SIZE_MB", "300"))  # 300MB default limit
+MAX_ROWS_SAMPLE = 50000  # For very large files, sample this many rows
 
 
 def analyze_dataset(csv_path):
@@ -16,9 +23,23 @@ def analyze_dataset(csv_path):
     Returns:
         dict: Dictionary containing dataset analysis results
     """
-    df = pd.read_csv(csv_path)
+    # Check file size
+    file_size_mb = os.path.getsize(csv_path) / (1024 * 1024)
+    print(f"\n📄 CSV File Size: {file_size_mb:.2f} MB")
+    
+    # If file is too large, use sampling
+    if file_size_mb > MAX_DATASET_SIZE_MB:
+        raise ValueError(f"CSV file too large: {file_size_mb:.2f} MB (limit: {MAX_DATASET_SIZE_MB} MB)")
+    elif file_size_mb > 100:  # For moderately large files (>100MB), use sampling
+        print(f"⚠️ Large CSV file detected. Sampling {MAX_ROWS_SAMPLE} rows...")
+        # Sample the data
+        df = pd.read_csv(csv_path, nrows=MAX_ROWS_SAMPLE)
+        print(f"   Sampled {len(df)} rows for analysis")
+    else:
+        # For smaller files, load the entire dataset
+        df = pd.read_csv(csv_path)
 
-    print(f"\n📄 Dataset Shape: {df.shape}")
+    print(f"📄 Dataset Shape: {df.shape}")
 
     # Guess target column (last column)
     target = 'Outcome' if 'Outcome' in df.columns else df.columns[-1]
@@ -42,51 +63,7 @@ def analyze_dataset(csv_path):
         "categorical_features": categorical,
         "target_column": target,
         "data": df,
-        "disease_name": "Diabetes"  # Default disease name
     }
-
-
-def load_dataset(kaggle_url):
-    """
-    Load a dataset from Kaggle URL.
-    
-    Args:
-        kaggle_url (str): URL of Kaggle dataset
-        
-    Returns:
-        dict: Dictionary with dataset information and analysis
-    """
-    csv_file_path, readme = download_kaggle_dataset(kaggle_url)
-    result = analyze_dataset(csv_file_path)
-    result["readme"] = readme
-    print(readme)
-    return result
-
-
-def infer_column_descriptions(df):
-    """
-    Infer and generate descriptions for dataset columns.
-    
-    Args:
-        df (DataFrame): Pandas DataFrame
-        
-    Returns:
-        dict: Dictionary mapping column names to descriptions
-    """
-    descriptions = {}
-    for col in df.columns:
-        if df[col].dtype in ['int64', 'float64']:
-            min_val = df[col].min()
-            max_val = df[col].max()
-            unique_vals = df[col].nunique()
-            descriptions[col] = f"Numeric | Range: [{min_val}, {max_val}] | Unique Values: {unique_vals}"
-        else:
-            unique_vals = df[col].dropna().unique()
-            if len(unique_vals) <= 10:
-                descriptions[col] = f"Categorical | Values: {list(unique_vals)}"
-            else:
-                descriptions[col] = f"Categorical | Unique count: {len(unique_vals)}"
-    return descriptions
 
 
 def get_target_labels_mapping(dataset):

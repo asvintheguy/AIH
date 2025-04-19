@@ -210,6 +210,21 @@ files = [
 ]
 
 [[package]]
+name = "drawpyo"
+version = "0.2.2"
+description = "A Python library for programmatically generating Draw.io charts."
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "drawpyo-0.2.2-py3-none-any.whl", hash = "sha256:fe67ee4c2e436f2bce671e298e262300e1f06b1fec7c6fc1c2ec75273a543269"},
+    {file = "drawpyo-0.2.2.tar.gz", hash = "sha256:a5e1ea04adde679a05457147930b85b5aa949634c40ac41e09f74d216b422b81"},
+]
+
+[package.dependencies]
+toml = {version = ">=0.10.2", markers = "python_version < \"3.11\""}
+
+[[package]]
 name = "exceptiongroup"
 version = "1.2.2"
 description = "Backport of PEP 654 (exception groups)"
@@ -224,6 +239,23 @@ files = [
 
 [package.extras]
 test = ["pytest (>=6)"]
+
+[[package]]
+name = "graphviz"
+version = "0.20.3"
+description = "Simple Python interface for Graphviz"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "graphviz-0.20.3-py3-none-any.whl", hash = "sha256:81f848f2904515d8cd359cc611faba817598d2feaac4027b266aa3eda7b3dde5"},
+    {file = "graphviz-0.20.3.zip", hash = "sha256:09d6bc81e6a9fa392e7ba52135a9d49f1ed62526f96499325930e87ca1b5925d"},
+]
+
+[package.extras]
+dev = ["flake8", "pep8-naming", "tox (>=3)", "twine", "wheel"]
+docs = ["sphinx (>=5,<7)", "sphinx-autodoc-typehints", "sphinx-rtd-theme"]
+test = ["coverage", "pytest (>=7,<8.1)", "pytest-cov", "pytest-mock (>=3)"]
 
 [[package]]
 name = "h11"
@@ -1080,6 +1112,19 @@ files = [
 ]
 
 [[package]]
+name = "toml"
+version = "0.10.2"
+description = "Python Library for Tom's Obvious, Minimal Language"
+optional = false
+python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
+groups = ["main"]
+markers = "python_version < \"3.11\""
+files = [
+    {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
+    {file = "toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f"},
+]
+
+[[package]]
 name = "tqdm"
 version = "4.67.1"
 description = "Fast, Extensible Progress Meter"
@@ -1204,4 +1249,4 @@ scikit-learn = ["scikit-learn"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9"
-content-hash = "e1706a0eeee2fa11fab484cdba93f5f907ea24c67e7d480783a36edb6d09574b"
+content-hash = "c1751f7696870271b9745f537ef17cce6357e0ddc99931d12a72547ee796e37d"

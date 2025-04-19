@@ -2,6 +2,10 @@
 Machine learning model training and evaluation.
 """
 
+import os
+import pandas as pd
+import numpy as np
+from dotenv import load_dotenv
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
@@ -15,9 +19,11 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline as ImbPipeline
 import xgboost as xgb
-import pandas as pd
-import numpy as np
-from src.config import TEST_SIZE, RANDOM_STATE
+
+# Load environment variables
+load_dotenv()
+TEST_SIZE = float(os.getenv("TEST_SIZE", "0.2"))
+RANDOM_STATE = int(os.getenv("RANDOM_STATE", "42"))
 
 
 def get_best_model(data, numeric_features, categorical_features, target_column):
@@ -208,6 +214,13 @@ class ModelWrapper:
                         X_processed[feature] = pd.to_numeric(X_processed[feature], errors='coerce')
                         X_processed[feature].fillna(0, inplace=True)
                     else:
+                        # Handle yes/no conversions for categorical features
+                        if str(X_processed[feature].iloc[0]).lower() in ['yes', 'y', 'true', 't']:
+                            X_processed[feature] = "1"
+                        elif str(X_processed[feature].iloc[0]).lower() in ['no', 'n', 'false', 'f']:
+                            X_processed[feature] = "0"
+                        
+                        # Convert to string for all categorical features
                         X_processed[feature] = X_processed[feature].astype(str)
             
             return self.model.predict(X_processed)

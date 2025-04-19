@@ -2,7 +2,12 @@
 Main entry point for the Health Risk Assessment System.
 """
 
+import os
 from src.agent import HealthRiskSystem
+from dotenv import load_dotenv
+
+load_dotenv()
+print(os.getenv("OPENAI_API_KEY"))
 
 def main():
     """Main entry point for the application."""

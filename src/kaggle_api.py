@@ -5,8 +5,13 @@ Kaggle API integration for dataset search and download.
 import os
 import shutil
 from urllib.parse import urlparse
+from dotenv import load_dotenv
 from kaggle.api.kaggle_api_extended import KaggleApi
-from src.config import DOWNLOAD_PATH
+
+# Load environment variables
+load_dotenv()
+DOWNLOAD_PATH = os.getenv("DOWNLOAD_PATH", "kaggle_dataset")
+MAX_DATASET_SIZE_MB = float(os.getenv("MAX_DATASET_SIZE_MB", "300"))  # 300MB default limit
 
 
 def initialize_kaggle_api():
@@ -19,6 +24,36 @@ def initialize_kaggle_api():
     api = KaggleApi()
     api.authenticate()
     return api
+
+
+def get_dataset_size_mb(api, dataset_slug):
+    """
+    Get the size of a Kaggle dataset in megabytes.
+    
+    Args:
+        api (KaggleApi): Authenticated Kaggle API object
+        dataset_slug (str): Dataset slug in format 'owner/dataset-name'
+        
+    Returns:
+        float: Size of the dataset in MB, or -1 if size cannot be determined
+    """
+    try:
+        # Get dataset metadata
+        dataset = api.dataset_view(dataset_slug)
+        
+        # Calculate total size in MB (totalBytes is in bytes)
+        if hasattr(dataset, 'totalBytes') and dataset.totalBytes is not None:
+            size_mb = dataset.totalBytes / (1024 * 1024)
+            return size_mb
+        
+        # If totalBytes not available, try getting file sizes
+        file_list = api.dataset_list_files(dataset_slug).files
+        total_size_bytes = sum(file.size for file in file_list if hasattr(file, 'size'))
+        size_mb = total_size_bytes / (1024 * 1024)
+        return size_mb
+    except Exception as e:
+        print(f"⚠️ Error determining dataset size: {e}")
+        return -1  # Return -1 to indicate unknown size
 
 
 def search_kaggle_datasets(query):
@@ -90,13 +125,22 @@ def download_kaggle_dataset(kaggle_url, download_path=DOWNLOAD_PATH):
         download_path (str): Path to download the dataset
         
     Returns:
-        tuple: Path to CSV file and README content
+        tuple: Path to CSV file and README content, or (None, None) if dataset is too large
         
     Raises:
         FileNotFoundError: If no CSV files found in the downloaded dataset
+        ValueError: If dataset exceeds size limit
     """
     slug = extract_slug_from_url(kaggle_url)
     api = initialize_kaggle_api()
+    
+    # Check dataset size before downloading
+    size_mb = get_dataset_size_mb(api, slug)
+    if size_mb > MAX_DATASET_SIZE_MB:
+        print(f"⚠️ Dataset size ({size_mb:.2f} MB) exceeds limit of {MAX_DATASET_SIZE_MB} MB. Skipping.")
+        raise ValueError(f"Dataset too large: {size_mb:.2f} MB (limit: {MAX_DATASET_SIZE_MB} MB)")
+    elif size_mb > 0:
+        print(f"📊 Dataset size: {size_mb:.2f} MB")
 
     if os.path.exists(download_path):
         shutil.rmtree(download_path)
@@ -124,5 +168,5 @@ def download_kaggle_dataset(kaggle_url, download_path=DOWNLOAD_PATH):
             print(f"\n📄 Reading README file: {readme_path}")
             with open(readme_path, 'r', encoding='utf-8') as file:
                 readme_content = file.read()
-                print(readme_content)  # You can process this content as needed
+                print(readme_content)
     return csv_path, readme_content 

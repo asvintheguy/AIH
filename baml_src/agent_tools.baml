@@ -2,7 +2,7 @@
 
 // Generate search queries based on symptoms
 function GenerateSearchQueries(symptoms: string) -> SearchQueries {
-  client "Pro25"
+  client "Flash25"
   prompt #"
     {{ _.role("system") }}
     You are a medical assistant helping to identify key symptoms and generate relevant search queries for health datasets.
@@ -12,32 +12,35 @@ function GenerateSearchQueries(symptoms: string) -> SearchQueries {
     "{{ symptoms }}"
     
     1. Extract the specific symptoms and potential conditions mentioned
-    2. Generate 5-7 search queries to find relevant health datasets on Kaggle
-    3. Make sure to include:
-       - 5 specific queries focused on the exact symptoms
-       - 5 more general queries for broader medical categories
-       - 2 generic medical dataset queries (e.g., "patient health data CSV")
-    4. Keep queries simple and use common medical terms
-    5. Avoid overly specific combinations of symptoms in a single query
+    2. Generate 20 search queries to find relevant health datasets on Kaggle
+    3. Guidelines for effective queries:
+       - Use a mix of symptom-specific and condition-related terms
+       - Include some general medical category terms
+       - Keep queries simple (2-4 words is ideal)
+       - Use common medical terminology
+       - Vary the wording to maximize dataset discovery
+    4. Avoid overly specific combinations of symptoms in a single query
     
-    For example, if someone mentions "chest pain and shortness of breath", good queries might be:
-    - "chest pain dataset" (specific)
-    - "shortness of breath data" (specific)
-    - "heart condition dataset" (general category)
-    - "respiratory health data" (general category)
-    - "patient symptoms CSV" (generic)
+    For example, if someone mentions "chest pain and shortness of breath", good queries might include:
+    - "chest pain dataset"
+    - "shortness of breath data"
+    - "heart condition dataset"
+    - "respiratory health data"
+    - "cardiovascular prediction"
+    - "breathing difficulty symptoms"
+    - "medical diagnosis data"
     
-    Return only the list of search queries that will find a good mix of specific and general relevant datasets.
+    Return a diverse list of 20 search queries to maximize the chance of finding relevant datasets.
     
     {{ ctx.output_format }}
     
     First, analyze the symptoms systematically:
     - Identify key individual symptoms described by the patient
-    - Map these symptoms to broader medical categories
+    - Map these symptoms to possible medical conditions
     - Consider common medical terminology that would appear in dataset names
-    - Create a mix of specific and general search terms
-    - Keep search terms short and focused (2-4 words per query)
-    - Use simple terms that match how datasets are typically named
+    - Create a diverse mix of search terms to maximize dataset discovery
+    - Keep search terms short and focused for better matches
+    - Generate variations of similar terms to increase coverage
     ...
     
     {
@@ -48,7 +51,7 @@ function GenerateSearchQueries(symptoms: string) -> SearchQueries {
 
 // Tool to evaluate models on a dataset
 function EvaluateModels(dataset: DatasetInfo) -> ModelEvaluation[] {
-  client "Flash20"
+  client "Flash25"
   prompt #"
     {{ _.role("system") }}
     You are a model evaluation assistant for a health risk assessment system.
@@ -101,7 +104,7 @@ class ConsolidatedFeatures {
 }
 
 function ConsolidateFeatures(datasetFeatures: string) -> ConsolidatedFeatures {
-  client "Pro25"
+  client "Flash25"
   prompt #"
     {{ _.role("system") }}
     You are a medical data specialist responsible for making technical health data collection more patient-friendly.
@@ -116,8 +119,14 @@ function ConsolidateFeatures(datasetFeatures: string) -> ConsolidatedFeatures {
     1. Identify similar features across datasets (e.g., "age" in one dataset is the same as "patient_age" in another)
     2. Create a user-friendly description for each feature (e.g., "blood_pressure" → "Your blood pressure reading (systolic/diastolic, like 120/80)")
     3. Specify the data type for each feature (numeric or categorical)
-    4. For categorical features, list possible values when clear from the feature name
-    5. Track which datasets each consolidated feature belongs to
+    4. For binary categorical features that use 0/1 values, explicitly list possible values as ["0", "1"] and phrase the description as a yes/no question (e.g., "Do you have diabetes?")
+    5. For other categorical features, list possible values when clear from the feature name
+    6. Track which datasets each consolidated feature belongs to
+    
+    IMPORTANT: For any binary features (like "smoker", "diabetes") that would be represented as 0/1 in the dataset:
+    - Use the values ["0", "1"] for possibleValues 
+    - Phrase the description as a yes/no question (e.g., "Are you a smoker?" instead of "Smoking status")
+    - This allows our system to present them as yes/no questions to users
     
     Consolidate similar features together and create patient-friendly descriptions.
     
@@ -129,6 +138,7 @@ function ConsolidateFeatures(datasetFeatures: string) -> ConsolidatedFeatures {
     - Consider medical domain knowledge to understand what each feature likely represents
     - Group features logically by the type of medical information they capture
     - Prioritize which features would be most important for comprehensive risk assessment
+    - Identify binary features where yes/no questions would be appropriate
     ...
     
     {
@@ -149,11 +159,11 @@ test feature_consolidation {
         },
         "Diabetes Risk Prediction": {
           "numeric": ["patient_age", "bmi", "glucose_level", "blood_pressure"],
-          "categorical": ["gender", "family_history", "physical_activity"]
+          "categorical": ["gender", "family_history", "physical_activity", "has_diabetes"]
         },
         "Stroke Risk Assessment": {
           "numeric": ["age", "avg_glucose", "bmi"],
-          "categorical": ["gender", "smoking_status", "heart_disease"]
+          "categorical": ["gender", "smoking_status", "heart_disease", "hypertension"]
         }
       }
     "#
@@ -167,7 +177,7 @@ function AssessHealthRisk(
   modelEvaluations: ModelEvaluation[],
   dataset: DatasetInfo
 ) -> RiskAssessment {
-  client "Pro25"
+  client "Flash25"
   prompt #"
     {{ _.role("system") }}
     You are a health risk assessment system.
@@ -195,6 +205,10 @@ function AssessHealthRisk(
     4. Dataset used
     5. Model used
     
+    IMPORTANT NOTE: For binary data fields that ask yes/no questions, the system stores answers as "1" for yes and "0" for no. 
+    When analyzing the patient data, interpret these values accordingly. For example, if a field like "smoker" has value "1", 
+    it means the patient is a smoker, and if it has value "0", the patient is not a smoker.
+    
     Base your assessment on the patient's symptoms and data, especially symptoms that match
     the dataset's health condition focus.
     
@@ -203,6 +217,7 @@ function AssessHealthRisk(
     First, outline your reasoning process step by step:
     - Analyzing the patient's symptoms and how they relate to the disease focus of the dataset
     - Evaluating the patient data and identifying key risk indicators
+    - Converting any binary yes/no answers from "1"/"0" to their actual meanings
     - Determining which model performs best on this dataset and why
     - Explaining how you're determining the risk level and confidence
     ...
@@ -218,7 +233,7 @@ function GenerateHealthReport(
   symptoms: string,
   assessments: RiskAssessment[]
 ) -> HealthRiskReport {
-  client "Pro25"
+  client "Flash25"
   prompt #"
     {{ _.role("system") }}
     You are a healthcare reporting system generating comprehensive health risk reports.
@@ -257,7 +272,7 @@ function EvaluateDatasetRelevance(
   symptoms: string,
   datasets: DatasetInfo[]
 ) -> DatasetInfo[] {
-  client "Pro25"
+  client "Flash25"
   prompt #"
     {{ _.role("system") }}
     You are a medical data specialist responsible for selecting the most relevant datasets for patient symptom analysis.
