@@ -120,36 +120,57 @@ class HealthRiskSystem:
                 description=f"Dataset for analyzing {ds['title']}"
             ))
         
-        if len(dataset_infos) < 3:
-            print(f"⚠️ Only found {len(dataset_infos)} datasets. Proceeding with limited data.")
-            self.datasets = dataset_infos
-            return len(dataset_infos) > 0  # Return false only if no datasets found
+        if len(dataset_infos) < 1:
+            print(f"⚠️ No datasets found. Cannot proceed.")
+            return False
         
         print(f"✅ Found {len(dataset_infos)} datasets. Evaluating relevance...")
         
-        # Use the EvaluateDatasetRelevance function to select the most relevant datasets
-        try:
-            selected_datasets = b.EvaluateDatasetRelevance(self.symptoms, dataset_infos)
+        # Process datasets in groups of 5 until at most 5 remain
+        selected_datasets = []
+        
+        while len(dataset_infos) > 5:
+            print(f"⏳ Processing group of datasets (remaining: {len(dataset_infos)})...")
+            batches = []
             
-            # Check if we have at least 3 datasets
-            if len(selected_datasets) < 3 and len(dataset_infos) >= 3:
-                print(f"⚠️ Only {len(selected_datasets)} datasets were selected. Adding more to reach minimum of 3.")
-                # Find which datasets weren't selected
-                selected_urls = {ds.url for ds in selected_datasets}
-                additional_datasets = [ds for ds in dataset_infos if ds.url not in selected_urls]
+            # Split into groups of 5
+            for i in range(0, len(dataset_infos), 5):
+                batch = dataset_infos[i:i+5]
+                if batch:  # Ensure batch is not empty
+                    batches.append(batch)
+            
+            # Process each batch and keep the best dataset from each
+            dataset_infos = []
+            for batch in batches:
+                try:
+                    best_dataset = b.EvaluateDatasetRelevance(self.symptoms, batch)
+                    if best_dataset and len(best_dataset) > 0:
+                        dataset_infos.extend(best_dataset)
+                        print(f"  ✅ Selected best dataset from batch: {best_dataset[0].title}")
+                    else:
+                        print(f"  ⚠️ No dataset selected from batch.")
+                except Exception as e:
+                    print(f"  ⚠️ Error evaluating batch: {e}")
+                    # Add a random dataset from the batch as fallback
+                    if batch:
+                        dataset_infos.append(batch[0])
+                        print(f"  ⚠️ Falling back to first dataset in batch: {batch[0].title}")
+        
+        # Final evaluation if we have more than 5 datasets
+        # Otherwise use what we have
+        final_datasets = dataset_infos
+        if len(dataset_infos) > 5:
+            try:
+                final_datasets = b.EvaluateDatasetRelevance(self.symptoms, dataset_infos)
+                if not final_datasets or len(final_datasets) == 0:
+                    print(f"⚠️ Final dataset evaluation returned no results. Using current datasets.")
+                    final_datasets = dataset_infos[:5]  # Use first 5 as fallback
+            except Exception as e:
+                print(f"⚠️ Error in final dataset evaluation: {e}")
+                final_datasets = dataset_infos[:5]  # Use first 5 as fallback
                 
-                # Add datasets until we have at least 3
-                while len(selected_datasets) < 3 and additional_datasets:
-                    selected_datasets.append(additional_datasets.pop(0))
-            
-            print(f"✅ Selected {len(selected_datasets)} datasets for analysis.")
-            self.datasets = selected_datasets
-        except Exception as e:
-            print(f"⚠️ Error evaluating dataset relevance: {e}")
-            # Fallback to at least 3 datasets (or all if fewer than 3 available)
-            min_datasets = min(3, len(dataset_infos))
-            self.datasets = dataset_infos[:min_datasets]
-            print(f"✅ Falling back to top {len(self.datasets)} datasets.")
+        print(f"✅ Selected {len(final_datasets)} datasets for analysis.")
+        self.datasets = final_datasets
         
         return len(self.datasets) > 0
 
@@ -379,8 +400,9 @@ class HealthRiskSystem:
         
         # Find features relevant to this dataset
         for feature in self.consolidated_features.features:
-            if dataset_title in feature.datasetSources and feature.name in self.user_data:
-                mapped_data[feature.name] = self.user_data[feature.name]
+            if dataset_title in feature.datasetSources:
+                if feature.name in self.user_data:
+                    mapped_data[feature.name] = self.user_data[feature.name]
         
         return mapped_data
 
@@ -434,7 +456,6 @@ class HealthRiskSystem:
                 dataset = self.downloaded_datasets[dataset_info.title]
                 
                 # Create a DataFrame with the user data
-                # The ModelWrapper will handle type conversions
                 input_df = pd.DataFrame([user_data])
                 
                 # Make prediction
@@ -448,10 +469,19 @@ class HealthRiskSystem:
                 # Find best model name
                 best_model_name = max(dataset_evaluations, key=lambda x: x.f1Score).modelName
                 
+                # Adjust confidence based on how many features were provided vs. random
+                if 'data' in dataset and dataset['data'] is not None:
+                    required_feature_count = len(dataset['numerical_features']) + len(dataset['categorical_features'])
+                    provided_feature_count = len(user_data)
+                    ratio = provided_feature_count / max(required_feature_count, 1)
+                    confidence = 0.85 * ratio + 0.15  # Scale confidence, minimum 0.15
+                else:
+                    confidence = 0.5  # Default confidence if we can't determine
+                
                 return RiskAssessment(
                     disease=dataset_info.title.split()[0],
                     riskLevel=risk_level,
-                    confidence=0.85,
+                    confidence=confidence,
                     datasetUsed=dataset_info.title,
                     modelUsed=best_model_name
                 )

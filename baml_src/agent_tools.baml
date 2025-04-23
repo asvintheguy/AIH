@@ -284,26 +284,21 @@ function EvaluateDatasetRelevance(
     I have found these potential datasets:
     {{ datasets }}
     
-    Please analyze each dataset and select the most relevant ones that:
-    1. Focus on patient symptoms similar to those described
-    2. Include clinical features and patient data, not just statistics
+    Please analyze each dataset and select the single most relevant one that:
+    1. Focuses on patient symptoms similar to those described
+    2. Includes clinical features and patient data, not just statistics
     3. Would be most useful for health risk assessment of these specific symptoms
-    4. Provide diverse coverage of the potential conditions suggested by these symptoms
     
-    IMPORTANT: You MUST return at least 3 datasets, even if only 1-2 are highly relevant to the symptoms. 
-    If more than 3 datasets are highly relevant, you may return up to 5.
-    
-    Return only the selected datasets, with updated relevance scores (0-1) indicating how well each matches the patient's symptoms.
+    Return only the single best dataset, with an updated relevance score (0-1) indicating how well it matches the patient's symptoms.
     
     {{ ctx.output_format }}
     
     First, carefully evaluate each dataset's relevance:
     - Analyze how closely each dataset title and description match the patient's symptoms
     - Consider which datasets likely contain actual patient symptom data vs. statistical data
-    - Identify datasets that cover different aspects of the patient's symptoms
-    - Assess which datasets would be most valuable for clinical risk assessment
-    - Assign meaningful relevance scores based on symptom match and dataset quality
-    - Remember that you must select at least 3 datasets, even if some are less relevant
+    - Assess which dataset would be most valuable for clinical risk assessment
+    - Assign a meaningful relevance score based on symptom match and dataset quality
+    - Select only the single best dataset that would provide the most relevant insights
     ...
     
     {

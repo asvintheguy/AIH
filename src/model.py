@@ -208,8 +208,17 @@ class ModelWrapper:
             # Ensure proper feature types
             X_processed = X.copy()
             
+            # Check for missing features and generate random values
             for feature, type_ in self.feature_types.items():
-                if feature in X_processed.columns:
+                if feature not in X_processed.columns:
+                    if type_ == 'numeric':
+                        # Generate random numeric value between 0 and 1
+                        X_processed[feature] = np.random.uniform(0, 1, len(X_processed))
+                    else:
+                        # Generate random categorical value (0 or 1 for simplicity)
+                        X_processed[feature] = np.random.choice(['0', '1'], len(X_processed))
+                else:
+                    # Process existing features
                     if type_ == 'numeric':
                         X_processed[feature] = pd.to_numeric(X_processed[feature], errors='coerce')
                         X_processed[feature].fillna(0, inplace=True)
