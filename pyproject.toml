@@ -19,6 +19,7 @@ python-dotenv = "^1.0.0"
 baml-py = "^0.84.3"
 graphviz = "^0.20.3"
 drawpyo = "^0.2.2"
+tqdm = "^4.67.1"
 
 [build-system]
 requires = ["poetry-core"]
