@@ -26,3 +26,4 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 chatbot = "main:main" 
+judge = "eval.judge:main"
